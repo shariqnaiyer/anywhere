@@ -20,11 +20,13 @@ Run the server:
 
 ```bash
 # Default port 3333
-./target/release/things-api
+THINGS_AUTH_TOKEN=your-token-here ./target/release/things-api
 
 # Custom port
-PORT=8080 ./target/release/things-api
+PORT=8080 THINGS_AUTH_TOKEN=your-token-here ./target/release/things-api
 ```
+
+> **Note:** `THINGS_AUTH_TOKEN` is required for list assignment (moving tasks to Today, Someday, etc.). Find it in Things → Settings → General → Authentication Token.
 
 Or in development:
 

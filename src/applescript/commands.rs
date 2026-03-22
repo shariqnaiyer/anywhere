@@ -1,6 +1,20 @@
 use crate::applescript::run_applescript;
 use crate::models::{Area, CreateTask, Project, Tag, Task, UpdateTask};
 
+fn things_auth_token() -> String {
+    std::env::var("THINGS_AUTH_TOKEN").unwrap_or_default()
+}
+
+fn things_url_update(id_expr: &str, params: &str) -> String {
+    let token = things_auth_token();
+    let auth = if token.is_empty() {
+        String::new()
+    } else {
+        format!("&auth-token={token}")
+    };
+    format!("set tid to id of {id_expr}\ndo shell script \"open 'things:///update?id=\" & tid & \"{params}{auth}'\"")
+}
+
 /// Escape a string for safe embedding in AppleScript double-quoted strings.
 fn esc(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
@@ -225,10 +239,10 @@ pub fn create_task(payload: &CreateTask) -> Result<Task, String> {
         )
     } else {
         match payload.list.as_deref() {
-            Some("today") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=today'\"".to_string(),
-            Some("someday") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=someday'\"".to_string(),
-            Some("upcoming") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=upcoming'\"".to_string(),
-            Some("anytime") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=anytime'\"".to_string(),
+            Some("today") => things_url_update("newTask", "&list=today"),
+            Some("someday") => things_url_update("newTask", "&list=someday"),
+            Some("upcoming") => things_url_update("newTask", "&list=upcoming"),
+            Some("anytime") => things_url_update("newTask", "&list=anytime"),
             _ => String::new(),
         }
     };
@@ -290,19 +304,8 @@ pub fn update_task(task_id: &str, payload: &UpdateTask) -> Result<Task, String> 
             esc(project)
         ));
     }
-    if let Some(list) = &payload.list {
-        let list_name = match list.as_str() {
-            "today" => "Today",
-            "upcoming" => "Upcoming",
-            "anytime" => "Anytime",
-            "someday" => "Someday",
-            _ => "Inbox",
-        };
-        updates.push(format!(
-            "move t to list \"{}\" of application \"Things3\"",
-            list_name
-        ));
-    }
+    // List moves are handled after the main update via URL scheme
+    let list_move = payload.list.as_deref();
 
     if updates.is_empty() {
         return get_task_by_id(task_id);
@@ -319,6 +322,20 @@ end tell"#,
     );
 
     run_applescript(&script)?;
+
+    // Handle list move via URL scheme if requested
+    if let Some(list) = list_move {
+        let move_script = things_url_update(
+            &format!("to do id \"{}\"", esc(task_id)),
+            &format!("&list={list}"),
+        );
+        let move_apple = format!(
+            "tell application \"Things3\"\n    {}\nend tell",
+            move_script.replace('\n', "\n    ")
+        );
+        let _ = run_applescript(&move_apple);
+    }
+
     get_task_by_id(task_id)
 }
 
