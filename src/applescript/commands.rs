@@ -232,12 +232,24 @@ pub fn create_task(payload: &CreateTask) -> Result<Task, String> {
         }
     };
 
-    let script = format!(
-        r#"tell application "Things3"
-    set newTask to make new to do with properties {{{props}}}{move_script}{tags_script}{checklist_script}
-    return id of newTask
-end tell"#
-    );
+    let mut lines = vec![
+        "tell application \"Things3\"".to_string(),
+        format!("    set newTask to make new to do with properties {{{props}}}"),
+    ];
+    if !move_script.is_empty() {
+        lines.push(format!("    {}", move_script.trim()));
+    }
+    if !tags_script.is_empty() {
+        lines.push(format!("    {}", tags_script.trim()));
+    }
+    if !checklist_script.is_empty() {
+        for cs_line in checklist_script.trim().lines() {
+            lines.push(format!("    {}", cs_line.trim()));
+        }
+    }
+    lines.push("    return id of newTask".to_string());
+    lines.push("end tell".to_string());
+    let script = lines.join("\n");
 
     // Debug: uncomment to see the generated script
     // eprintln!("AppleScript:\n{}", script);
