@@ -216,18 +216,19 @@ pub fn create_task(payload: &CreateTask) -> Result<Task, String> {
         String::new()
     };
 
-    // Build list/project assignment after creation
-    // Things 3 smart lists (Today, Upcoming, etc.) aren't containers you can move to.
-    // Instead: Today = set activation date, Someday = set status to someday, etc.
+    // Build list/project assignment after creation.
+    // Things 3 smart lists aren't containers — use URL scheme to schedule.
     let move_script = if let Some(project) = &payload.project {
         format!(
-            "\n    set theProject to project \"{}\"\n    move newTask to theProject",
+            "set theProject to project \"{}\"\nmove newTask to theProject",
             esc(project)
         )
     } else {
         match payload.list.as_deref() {
-            Some("today") => "\n    set activation date of newTask to (current date)".to_string(),
-            Some("someday") => "\n    set status of newTask to someday".to_string(),
+            Some("today") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=today'\"".to_string(),
+            Some("someday") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=someday'\"".to_string(),
+            Some("upcoming") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=upcoming'\"".to_string(),
+            Some("anytime") => "set tid to id of newTask\ndo shell script \"open 'things:///update?id=\" & tid & \"&list=anytime'\"".to_string(),
             _ => String::new(),
         }
     };
