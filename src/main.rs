@@ -7,7 +7,7 @@ use axum::{
     http::StatusCode,
     middleware::{self, Next},
     response::IntoResponse,
-    routing::{get, patch},
+    routing::{delete, get, patch, post},
     Json, Router,
 };
 use clap::Parser;
@@ -25,9 +25,30 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use models::HealthResponse;
 use routes::{
-    projects::list_projects,
-    tags::{list_areas, list_tags},
-    tasks::{complete_task, create_task, delete_task, get_task, list_tasks, update_task},
+    areas::{
+        count_areas, create_area, delete_area, get_area, list_area_tasks, list_areas, show_area,
+        update_area,
+    },
+    contacts::{
+        count_contacts, create_contact, delete_contact, list_contact_tasks, list_contacts,
+    },
+    lists::{list_lists, show_list},
+    projects::{
+        count_projects, create_project, delete_project, edit_project, get_project,
+        list_project_tasks, list_projects, show_project, update_project,
+    },
+    system::{
+        app_info, close_window, list_windows, log_completed_now, parse_quicksilver, quit_app,
+        show_quick_entry, update_window,
+    },
+    tags::{
+        count_tags, create_tag, delete_tag, get_tag, list_tag_children, list_tag_tasks, list_tags,
+        update_tag,
+    },
+    tasks::{
+        cancel_task, complete_task, count_tasks, create_task, delete_task, edit_task, get_task,
+        list_selected_tasks, list_tasks, show_task, update_task,
+    },
     trash::empty_trash,
 };
 
@@ -40,14 +61,56 @@ use routes::{
     paths(
         health,
         routes::tasks::list_tasks,
+        routes::tasks::list_selected_tasks,
+        routes::tasks::count_tasks,
         routes::tasks::get_task,
         routes::tasks::create_task,
         routes::tasks::update_task,
         routes::tasks::complete_task,
+        routes::tasks::cancel_task,
+        routes::tasks::show_task,
+        routes::tasks::edit_task,
         routes::tasks::delete_task,
         routes::projects::list_projects,
+        routes::projects::count_projects,
+        routes::projects::get_project,
+        routes::projects::list_project_tasks,
+        routes::projects::create_project,
+        routes::projects::update_project,
+        routes::projects::delete_project,
+        routes::projects::show_project,
+        routes::projects::edit_project,
+        routes::areas::list_areas,
+        routes::areas::count_areas,
+        routes::areas::get_area,
+        routes::areas::list_area_tasks,
+        routes::areas::create_area,
+        routes::areas::update_area,
+        routes::areas::delete_area,
+        routes::areas::show_area,
         routes::tags::list_tags,
-        routes::tags::list_areas,
+        routes::tags::count_tags,
+        routes::tags::get_tag,
+        routes::tags::list_tag_tasks,
+        routes::tags::list_tag_children,
+        routes::tags::create_tag,
+        routes::tags::update_tag,
+        routes::tags::delete_tag,
+        routes::contacts::list_contacts,
+        routes::contacts::count_contacts,
+        routes::contacts::list_contact_tasks,
+        routes::contacts::create_contact,
+        routes::contacts::delete_contact,
+        routes::lists::list_lists,
+        routes::lists::show_list,
+        routes::system::app_info,
+        routes::system::list_windows,
+        routes::system::update_window,
+        routes::system::close_window,
+        routes::system::quit_app,
+        routes::system::log_completed_now,
+        routes::system::show_quick_entry,
+        routes::system::parse_quicksilver,
         routes::trash::empty_trash,
     ),
     components(schemas(
@@ -56,8 +119,24 @@ use routes::{
         models::Project,
         models::Tag,
         models::Area,
+        models::Contact,
+        models::ListInfo,
         models::CreateTask,
         models::UpdateTask,
+        models::CreateProject,
+        models::UpdateProject,
+        models::CreateArea,
+        models::UpdateArea,
+        models::CreateTag,
+        models::UpdateTag,
+        models::CreateContact,
+        models::QuickEntry,
+        models::ParseInput,
+        models::AppInfo,
+        models::WindowInfo,
+        models::UpdateWindow,
+        models::QuitRequest,
+        models::CountResponse,
         models::HealthResponse,
         models::ErrorResponse,
     )),
@@ -66,6 +145,9 @@ use routes::{
         (name = "projects", description = "Projects in Things 3"),
         (name = "tags", description = "Tags in Things 3"),
         (name = "areas", description = "Areas in Things 3"),
+        (name = "contacts", description = "Contacts in Things 3"),
+        (name = "lists", description = "The seven special lists (Inbox, Today, …)"),
+        (name = "system", description = "System / UI commands"),
         (name = "trash", description = "Trash management in Things 3"),
     ),
     modifiers(&BearerAuthAddon),
@@ -150,16 +232,67 @@ fn router(auth_token: Option<String>) -> Router {
         .allow_headers(Any);
 
     let api_routes = Router::new()
+        // Tasks
         .route("/tasks", get(list_tasks).post(create_task))
+        .route("/tasks/selected", get(list_selected_tasks))
+        .route("/tasks/count", get(count_tasks))
+        .route("/tasks/parse", post(parse_quicksilver))
         .route(
             "/tasks/{id}",
             get(get_task).patch(update_task).delete(delete_task),
         )
         .route("/tasks/{id}/complete", patch(complete_task))
-        .route("/projects", get(list_projects))
-        .route("/tags", get(list_tags))
-        .route("/areas", get(list_areas))
-        .route("/trash", axum::routing::delete(empty_trash));
+        .route("/tasks/{id}/cancel", patch(cancel_task))
+        .route("/tasks/{id}/show", post(show_task))
+        .route("/tasks/{id}/edit", post(edit_task))
+        // Projects
+        .route("/projects", get(list_projects).post(create_project))
+        .route("/projects/count", get(count_projects))
+        .route(
+            "/projects/{id}",
+            get(get_project).patch(update_project).delete(delete_project),
+        )
+        .route("/projects/{id}/tasks", get(list_project_tasks))
+        .route("/projects/{id}/show", post(show_project))
+        .route("/projects/{id}/edit", post(edit_project))
+        // Areas
+        .route("/areas", get(list_areas).post(create_area))
+        .route("/areas/count", get(count_areas))
+        .route(
+            "/areas/{id}",
+            get(get_area).patch(update_area).delete(delete_area),
+        )
+        .route("/areas/{id}/tasks", get(list_area_tasks))
+        .route("/areas/{id}/show", post(show_area))
+        // Tags
+        .route("/tags", get(list_tags).post(create_tag))
+        .route("/tags/count", get(count_tags))
+        .route(
+            "/tags/{id}",
+            get(get_tag).patch(update_tag).delete(delete_tag),
+        )
+        .route("/tags/{id}/tasks", get(list_tag_tasks))
+        .route("/tags/{id}/children", get(list_tag_children))
+        // Contacts
+        .route("/contacts", get(list_contacts).post(create_contact))
+        .route("/contacts/count", get(count_contacts))
+        .route("/contacts/{id}", delete(delete_contact))
+        .route("/contacts/{id}/tasks", get(list_contact_tasks))
+        // Lists
+        .route("/lists", get(list_lists))
+        .route("/lists/{name}/show", post(show_list))
+        // System / UI
+        .route("/info", get(app_info))
+        .route("/windows", get(list_windows))
+        .route(
+            "/windows/{id}",
+            patch(update_window).delete(close_window),
+        )
+        .route("/system/log-completed", post(log_completed_now))
+        .route("/system/quick-entry", post(show_quick_entry))
+        .route("/system/quit", post(quit_app))
+        // Trash
+        .route("/trash", delete(empty_trash));
 
     let api_routes = if let Some(token) = auth_token {
         let token = Arc::new(token);
