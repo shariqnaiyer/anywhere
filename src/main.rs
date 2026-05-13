@@ -17,6 +17,11 @@ use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use utoipa::{
+    openapi::security::{Http, HttpAuthScheme, SecurityScheme},
+    Modify, OpenApi,
+};
+use utoipa_swagger_ui::SwaggerUi;
 
 use models::HealthResponse;
 use routes::{
@@ -24,6 +29,57 @@ use routes::{
     tags::{list_areas, list_tags},
     tasks::{complete_task, create_task, delete_task, get_task, list_tasks, update_task},
 };
+
+#[derive(OpenApi)]
+#[openapi(
+    info(
+        title = "things-api",
+        description = "REST API for Things 3 (macOS) via AppleScript. Not affiliated with Cultured Code.",
+    ),
+    paths(
+        health,
+        routes::tasks::list_tasks,
+        routes::tasks::get_task,
+        routes::tasks::create_task,
+        routes::tasks::update_task,
+        routes::tasks::complete_task,
+        routes::tasks::delete_task,
+        routes::projects::list_projects,
+        routes::tags::list_tags,
+        routes::tags::list_areas,
+    ),
+    components(schemas(
+        models::Task,
+        models::ChecklistItem,
+        models::Project,
+        models::Tag,
+        models::Area,
+        models::CreateTask,
+        models::UpdateTask,
+        models::HealthResponse,
+        models::ErrorResponse,
+    )),
+    tags(
+        (name = "tasks", description = "Tasks in Things 3"),
+        (name = "projects", description = "Projects in Things 3"),
+        (name = "tags", description = "Tags in Things 3"),
+        (name = "areas", description = "Areas in Things 3"),
+    ),
+    modifiers(&BearerAuthAddon),
+)]
+struct ApiDoc;
+
+struct BearerAuthAddon;
+
+impl Modify for BearerAuthAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme(
+            "bearer_auth",
+            SecurityScheme::Http(Http::new(HttpAuthScheme::Bearer)),
+        );
+    }
+}
 
 #[derive(Parser)]
 #[command(name = "things-api", about = "REST API server for Things 3")]
@@ -37,6 +93,12 @@ struct Args {
     port: Option<u16>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    tag = "health",
+    responses((status = 200, description = "Server status", body = HealthResponse)),
+)]
 async fn health() -> impl IntoResponse {
     (
         StatusCode::OK,
@@ -107,6 +169,7 @@ fn router(auth_token: Option<String>) -> Router {
     Router::new()
         .route("/health", get(health))
         .merge(api_routes)
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .layer(cors)
 }
 
