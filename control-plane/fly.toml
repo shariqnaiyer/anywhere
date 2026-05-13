@@ -1,0 +1,40 @@
+# Fly.io app config for the things-api control plane.
+# Rename `app` to whatever you registered with `fly apps create`.
+
+app = "things-api-control-plane"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  # ROOT_DOMAIN, CF_API_TOKEN, CF_ACCOUNT_ID, CF_ZONE_ID are set via:
+  #   fly secrets set CF_API_TOKEN=... CF_ACCOUNT_ID=... CF_ZONE_ID=... ROOT_DOMAIN=anywhere-api.io
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[mounts]]
+  source = "control_plane_data"
+  destination = "/data"
+
+# Database lives on the mounted volume so it survives restarts.
+[deploy]
+  release_command = "/bin/true"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+    force_https = true
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443

@@ -1,6 +1,18 @@
-/target
-Cargo.lock
+# Rust build artifacts (both root and control-plane/target/)
+target/
+
+# Local control-plane SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Local env files
 .env
+.env.local
+
+# Editor scratch files
 *.swp
 *.swo
+
+# macOS
 .DS_Store
