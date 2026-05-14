@@ -8,6 +8,9 @@ target/
 mac-app/build/
 *.dmg
 
+# tui universal-binary output
+tui/dist/
+
 # Xcode (if anyone generates a project later)
 *.xcodeproj/
 *.xcworkspace/

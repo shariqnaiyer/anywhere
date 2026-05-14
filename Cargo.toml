@@ -30,7 +30,7 @@ path = "src/main.rs"
 name = "stress"
 path = "src/bin/stress.rs"
 
-# control-plane/ is a separate Cargo project; exclude it from the implicit workspace.
+# control-plane/ and tui/ are separate Cargo projects; exclude them from the implicit workspace.
 [workspace]
 members = []
-exclude = ["control-plane"]
+exclude = ["control-plane", "tui"]
