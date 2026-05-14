@@ -280,6 +280,12 @@ All errors return a JSON body:
 | `404`  | Task or resource not found           |
 | `500`  | AppleScript / Things 3 error         |
 
+## Companion projects
+
+- [`tui/`](tui/) — terminal UI for browsing and managing tasks (Rust + ratatui).
+- [`mcp/`](mcp/) — MCP server so Claude (Desktop / Code) can call Things 3 as tools. See [`mcp/README.md`](mcp/README.md).
+- [`mac-app/`](mac-app/) — macOS menu-bar wrapper.
+
 ## Notes
 
 - Things 3 must be **open** for AppleScript calls to succeed.
