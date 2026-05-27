@@ -10,11 +10,9 @@ struct ThingsAPIMenuBarApp: App {
     init() {
         let store = AccountStore()
         let manager = ServerManager(accountStore: store)
-        // Auto-start at launch if the user is already signed up. This is what makes
-        // "Launch at Login" actually serve traffic without a click.
-        if store.account != nil {
-            manager.start()
-        }
+        // Auto-start at launch. With a signed-up account the server uses the permanent tunnel;
+        // without one it creates an ephemeral trycloudflare.com URL automatically.
+        manager.start()
         _accountStore = StateObject(wrappedValue: store)
         _serverManager = StateObject(wrappedValue: manager)
     }
@@ -44,6 +42,7 @@ struct ThingsAPIMenuBarApp: App {
                 .frame(minWidth: 420, minHeight: 320)
         }
         .windowResizability(.contentSize)
+
     }
 
     private func iconName(for state: ServerState) -> String {

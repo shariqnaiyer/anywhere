@@ -15,6 +15,10 @@ final class ServerManager: ObservableObject {
     @Published private(set) var state: ServerState = .stopped
     @Published private(set) var lastHealthCheck: Date?
     @Published private(set) var recentLog: [String] = []
+    /// The ephemeral trycloudflare.com URL parsed from server stdout.
+    /// Only populated when the server is running without a signed-up account.
+    /// Cleared on each new start() call.
+    @Published private(set) var quickTunnelURL: String?
 
     /// Local port the server binds. Mirrors the Rust default.
     var port: Int = 3333
@@ -46,6 +50,7 @@ final class ServerManager: ObservableObject {
 
         state = .starting
         recentLog.removeAll()
+        quickTunnelURL = nil
 
         let p = Process()
         p.executableURL = binary
@@ -161,6 +166,19 @@ final class ServerManager: ObservableObject {
                     self.recentLog.append(entry)
                     if self.recentLog.count > 200 {
                         self.recentLog.removeFirst(self.recentLog.count - 200)
+                    }
+                    // Extract the ephemeral trycloudflare.com URL the server prints on startup.
+                    // The Rust binary outputs something like:
+                    //   │  URL:    https://word-word-word.trycloudflare.com        │
+                    // or via cloudflared's own log line containing the same URL.
+                    if self.quickTunnelURL == nil, line.contains("trycloudflare.com") {
+                        let s = String(line)
+                        if let range = s.range(
+                            of: #"https://[A-Za-z0-9][A-Za-z0-9\-]+\.trycloudflare\.com"#,
+                            options: .regularExpression
+                        ) {
+                            self.quickTunnelURL = String(s[range])
+                        }
                     }
                 }
             }

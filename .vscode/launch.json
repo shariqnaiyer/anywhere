@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:things-api}/mac-app",
+            "name": "Debug ThingsAPIMenuBar (mac-app)",
+            "target": "ThingsAPIMenuBar",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ThingsAPIMenuBar (mac-app)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:things-api}/mac-app",
+            "name": "Release ThingsAPIMenuBar (mac-app)",
+            "target": "ThingsAPIMenuBar",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ThingsAPIMenuBar (mac-app)"
+        }
+    ]
+}

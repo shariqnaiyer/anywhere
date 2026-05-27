@@ -62,6 +62,7 @@ final class AccountStore: ObservableObject {
         account = nil
     }
 
+
     // MARK: - Auth token
 
     static func readAuthToken() -> String? {

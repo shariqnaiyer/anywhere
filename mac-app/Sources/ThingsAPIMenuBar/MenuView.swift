@@ -16,12 +16,14 @@ struct MenuView: View {
 
         Divider()
 
-        if let account = accountStore.account {
-            Button("Copy URL: \(account.url)") {
-                copy(account.url)
+        if let url = effectiveURL {
+            Button("Copy URL: \(url)") {
+                copy(url)
             }
+        } else if serverManager.state == .starting {
+            Text("URL: getting tunnel…").disabled(true)
         } else {
-            Text("URL: (none — sign up first)").disabled(true)
+            Text("URL: (none)").disabled(true)
         }
 
         if let token = accountStore.authToken {
@@ -37,7 +39,7 @@ struct MenuView: View {
         Button("Open Swagger UI") {
             openSwaggerUI()
         }
-        .disabled(accountStore.account == nil && serverManager.state != .running)
+        .disabled(effectiveURL == nil)
 
         Button("Copy curl example") {
             copyCurlExample()
@@ -50,7 +52,6 @@ struct MenuView: View {
         switch serverManager.state {
         case .stopped:
             Button("Start server") { serverManager.start() }
-                .disabled(accountStore.account == nil)
         case .starting:
             Text("Starting…").disabled(true)
         case .running:
@@ -98,12 +99,22 @@ struct MenuView: View {
         .keyboardShortcut("q")
     }
 
+    // MARK: - Effective URL
+
+    /// The best available public URL: permanent account URL first, then the ephemeral
+    /// trycloudflare.com URL the server prints when running without a signed-up account.
+    private var effectiveURL: String? {
+        accountStore.account?.url ?? serverManager.quickTunnelURL
+    }
+
     // MARK: - Status line
 
     private var statusLine: String {
         let mode: String
         if let a = accountStore.account {
             mode = "named (\(a.username))"
+        } else if serverManager.quickTunnelURL != nil {
+            mode = "ephemeral (quick tunnel)"
         } else {
             mode = "ephemeral"
         }
@@ -129,13 +140,13 @@ struct MenuView: View {
 
     private func copyCurlExample() {
         guard let token = accountStore.authToken else { return }
-        let url = accountStore.account?.url ?? "http://127.0.0.1:3333"
+        let url = effectiveURL ?? "http://127.0.0.1:\(serverManager.port)"
         let curl = "curl -H 'Authorization: Bearer \(token)' \(url)/tasks"
         copy(curl)
     }
 
     private func openSwaggerUI() {
-        let base = accountStore.account?.url ?? "http://127.0.0.1:3333"
+        let base = effectiveURL ?? "http://127.0.0.1:\(serverManager.port)"
         if let url = URL(string: "\(base)/swagger-ui") {
             NSWorkspace.shared.open(url)
         }
