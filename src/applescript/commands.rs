@@ -210,13 +210,19 @@ pub fn create_task(payload: &CreateTask) -> Result<Task, String> {
         format!("    set newTask to make new to do with properties {{{props}}}"),
     ];
 
+    // NB: `move newTask to project "X"` reliably fails with Things 3 error 301
+    // ("Cannot move to-do"). `set project of newTask to project "X"` is the
+    // documented assignment form that actually works. Same story for area.
     if let Some(project) = &payload.project {
         lines.push(format!(
-            "    move newTask to project \"{}\"",
+            "    set project of newTask to project \"{}\"",
             esc(project)
         ));
     } else if let Some(area) = &payload.area {
-        lines.push(format!("    move newTask to area \"{}\"", esc(area)));
+        lines.push(format!(
+            "    set area of newTask to area \"{}\"",
+            esc(area)
+        ));
     }
 
     if let Some(activation) = &payload.activation_date {
@@ -310,14 +316,15 @@ pub fn update_task(task_id: &str, payload: &UpdateTask) -> Result<Task, String> 
         if project.is_empty() {
             updates.push("set project of t to missing value".to_string());
         } else {
-            updates.push(format!("move t to project \"{}\"", esc(project)));
+            // `move t to project "X"` fails with Things 3 error 301; use assignment instead.
+            updates.push(format!("set project of t to project \"{}\"", esc(project)));
         }
     }
     if let Some(area) = &payload.area {
         if area.is_empty() {
             updates.push("set area of t to missing value".to_string());
         } else {
-            updates.push(format!("move t to area \"{}\"", esc(area)));
+            updates.push(format!("set area of t to area \"{}\"", esc(area)));
         }
     }
     if let Some(contact) = &payload.contact {
